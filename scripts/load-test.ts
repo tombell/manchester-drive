@@ -18,13 +18,13 @@ if (
   throw Error('Usage: bun run load:test <crowd|spread> <1–512 players> <1–600 seconds>');
 const control = new URL(Bun.env.FIXTURE_URL ?? 'http://127.0.0.1:4174');
 const abort = new AbortController();
-async function command(url: URL, data?: object) {
+async function command(url: URL, data?: object, acceptedStatus?: number) {
   const response = await fetch(url, {
     method: 'POST',
     body: JSON.stringify(data),
     signal: AbortSignal.timeout(10000),
   });
-  if (!response.ok)
+  if (!response.ok && response.status !== acceptedStatus)
     throw Error(url.pathname + ' ' + response.status + ' ' + (await response.text()));
   return await response.json();
 }
@@ -43,6 +43,7 @@ let failures = 0,
 type Client = Credentials & {
   seq: number;
   viewer: string;
+  streamError?: unknown;
   lastArea: string;
   actor?: VisiblePlayer;
   frames: number;
@@ -54,8 +55,7 @@ type Client = Credentials & {
 };
 const clients: Client[] = [],
   streamTasks: Promise<void>[] = [];
-let streamError: unknown,
-  stopping = false;
+let stopping = false;
 let streamFailures = 0;
 
 async function listen(c: Client) {
@@ -120,14 +120,15 @@ async function join(index: number) {
   streamTasks.push(
     listen(c).catch((e) => {
       if (!stopping) {
-        streamError = e;
+        c.streamError = e;
         streamFailures++;
       }
     }),
   );
   const until = performance.now() + 10000;
   while (!c.viewer) {
-    if (streamError || performance.now() > until) throw Error('Could not open live view');
+    if (c.streamError) throw c.streamError;
+    if (performance.now() > until) throw Error('Could not open live view');
     await Bun.sleep(10);
   }
   await view(c, 0);
@@ -185,7 +186,6 @@ try {
     step++;
   }, 100);
   await Bun.sleep(6000);
-  if (streamError) throw streamError;
   const start = await command(new URL('/start', control));
   startedMeasure = true;
   if (start.players !== count || clients.some((c) => !c.actor))
@@ -228,6 +228,17 @@ try {
   abort.abort();
   await Promise.allSettled([...pending, ...streamTasks]);
   if (startedMeasure) await command(new URL('/finish', control)).catch(() => {});
-  for (let i = 0; i < clients.length; i += 8)
-    await Promise.all(clients.slice(i, i + 8).map((c) => post('/leave', { token: c.token })));
+  const leave = new URL('/leave', game);
+  for (let i = 0; i < clients.length; i += 8) {
+    // A session that expired during the run has already left the room.
+    const results = await Promise.allSettled(
+      clients.slice(i, i + 8).map((c) => command(leave, { token: c.token }, 401)),
+    );
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        console.error('Could not release load-test session', result.reason);
+        process.exitCode = 1;
+      }
+    }
+  }
 }

@@ -65,6 +65,8 @@ For measurements across two private hosts, set `HOST` on the game host to its pr
 
 The runner prints a JSON record with simulation rate, fixed-step processing time (including snapshot publication), peak game-process RSS, received SSE bandwidth, frames per client, input HTTP acknowledgement latency and failures. Timing excludes browser rendering. Run scenarios sequentially so the room is empty at the start of each run.
 
+The London runs compared the two snapshot formats with players crowded around Piccadilly and spread across eight locations. [Load-test results](docs/load-test-2026-11-21.md)
+
 ## Implementation
 
 The game runs as one Bun application. Its source is organised by responsibility.
@@ -78,7 +80,7 @@ The game runs as one Bun application. Its source is organised by responsibility.
 
 The HTTP routes validate incoming commands and pass them to the room. The room owns player sessions, input ordering and simulation time. It can run directly in a test with a controlled clock.
 
-Players and nearby NPCs update at 60 Hz. Unobserved NPCs continue their routes at 10 Hz, with collision and crossing checks. Every browser receives 15 snapshots per second over Server-Sent Events. Each snapshot includes the drivers, walkers, parked cars and NPCs near the camera and the driver. A player on foot also receives directions to their own parked car. The player count, races and chat are shared across the room. Each browser sends sequenced control changes over HTTP, predicts its own car between snapshots and interpolates other road users. A lost heartbeat releases the controls and eventually removes the car. The shared room lasts for the lifetime of the server.
+Players and nearby NPCs update at 60 Hz. Unobserved NPCs continue their routes at 10 Hz, with collision and crossing checks. The server targets 15 snapshots per second per browser over Server-Sent Events. Each snapshot includes the drivers, walkers, parked cars and NPCs near the camera and the driver. A player on foot also receives directions to their own parked car. The player count, races and chat are shared across the room. Each browser sends sequenced control changes over HTTP, predicts its own car between snapshots and interpolates other road users. A lost heartbeat releases the controls and eventually removes the car. The shared room lasts for the lifetime of the server.
 
 Cars and walkers collide with buildings, vehicles, other players and the edge of the playable area. Cars also stop at the banks of mapped water and can cross it on road bridges. Tree trunks, bus stop poles, fingerposts, traffic lights, benches, fixed bollards, litter bins, pillar boxes and planters also have solid bases. You can pass under branches and behind signs. Traffic follows four mapped circuits across Piccadilly, Shudehill and the Northern Quarter, brakes for queues and crossings, and indicates before turning. Signal timings and lane positions are game approximations. Free driving allows either direction. The race and all traffic routes follow mapped motorcar access and one-way directions.
 

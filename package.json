@@ -10,7 +10,7 @@
     "typecheck": "bun --bun tsc --noEmit",
     "test": "bun test",
     "load:server": "bun scripts/load-server.ts",
-    "load:test": "bun scripts/load-test.ts"
+    "load:test": "BUN_CONFIG_MAX_HTTP_REQUESTS=1024 bun scripts/load-test.ts"
   },
   "dependencies": {
     "hono": "4.13.19",
