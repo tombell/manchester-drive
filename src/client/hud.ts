@@ -1,4 +1,4 @@
-import type { Player, World } from '../game/game-types';
+import type { VisiblePlayer, Snapshot } from '../protocol/snapshots';
 import { appearance, models, jackets, skinTones } from '../game/garage';
 import { gates, raceEntry } from '../game/race';
 import { drawGarage } from './renderer';
@@ -92,9 +92,9 @@ const drivingButtons: Record<number, [string, string]> = {
   8: ['▶', 'Steer right'],
 };
 interface HudState {
-  world?: World;
+  world?: Snapshot;
   playerId?: string;
-  predicted: Player | null;
+  predicted: VisiblePlayer | null;
   freeCam: boolean;
   connected: boolean;
   busy: boolean;
@@ -105,7 +105,7 @@ interface HudState {
 
 export function updateHud(state: HudState) {
   const { world, playerId, predicted, freeCam, connected, busy, doorBusy } = state;
-  const onFoot = !!predicted?.parkedCar;
+  const onFoot = !!predicted?.parkedCarId;
   el('join').hidden = !!playerId || freeCam;
   el('dash').hidden = !playerId || freeCam;
   el('touch').hidden = !playerId || freeCam;
@@ -168,7 +168,7 @@ function updateRacePanel({
     ? 'Free cam'
     : active && race?.phase !== 'open'
       ? 'One-lap race'
-      : predicted?.parkedCar
+      : predicted?.parkedCarId
         ? 'On foot'
         : 'Free drive';
   const button = el('race-action');

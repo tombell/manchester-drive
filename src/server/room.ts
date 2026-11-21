@@ -27,9 +27,16 @@ export class GameRoom {
   private accumulator = 0;
   private tick = 0;
 
-  constructor(private readonly now = Date.now) {}
+  constructor(
+    private readonly now = Date.now,
+    private readonly recordTick?: (milliseconds: number) => void,
+  ) {}
 
-  join(name: string, options: GarageOptions = {}): Credentials | { error: string } {
+  join(
+    name: string,
+    options: GarageOptions = {},
+    positions?: Iterable<number[]>,
+  ): Credentials | { error: string } {
     const id = crypto.randomUUID();
     const usage = new Map<string, number>();
     for (const { color } of this.world.players) usage.set(color, (usage.get(color) ?? 0) + 1);
@@ -42,6 +49,7 @@ export class GameRoom {
       color,
       this.world,
       options,
+      positions,
     );
     if (!player) return { error: 'Could not find a clear starting position. Try again shortly.' };
 
@@ -124,9 +132,11 @@ export class GameRoom {
 
     this.accumulator += Math.min(elapsedSeconds, 0.2);
     while (this.accumulator >= stepSeconds) {
+      const start = this.recordTick ? performance.now() : 0;
       step(this.world, this.inputs, stepSeconds, npcStep);
       this.accumulator -= stepSeconds;
       if (++this.tick % 4 === 0) publish(this.world);
+      if (this.recordTick) this.recordTick(performance.now() - start);
     }
   }
 }

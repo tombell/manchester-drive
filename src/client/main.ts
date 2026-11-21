@@ -1,10 +1,11 @@
-import type { Player, Position, World } from '../game/game-types';
+import type { Position } from '../game/game-types';
 import { heldOnGrid } from '../game/race';
 import { clampToM60, mapChunk } from '../game/region';
 import { useBrowserMap } from './map';
+import { snapshotRoadUsers, type Snapshot, type VisiblePlayer } from '../protocol/snapshots';
 import { cameraCells } from '../protocol/view';
 import { streetAt } from '../game/streets';
-import { createWorld, drive, walk, roadUsers, JUNCTION } from '../game/world';
+import { createWorld, drive, walk, JUNCTION } from '../game/world';
 import type { Credentials } from '../protocol/commands';
 import { setupChat } from './chat';
 import { el, notice, outfit, setupGarage, updateHud } from './hud';
@@ -14,15 +15,15 @@ import { makeRenderer, viewport } from './renderer';
 useBrowserMap();
 const map = el('map');
 const render = makeRenderer(map),
-  initial = createWorld();
+  initial: Snapshot = { ...createWorld(), players: [], parkedCars: [], playerCount: 0 };
 const keyBits: Record<string, number> = { KeyW: 1, KeyS: 2, KeyA: 4, KeyD: 8 };
 let session: Credentials | null = null,
   sequence = 0,
   keyboard = 0,
   touch = 0,
   busy = false;
-let frames: { state: World; now: number }[] = [],
-  predicted: Player | null = null,
+let frames: { state: Snapshot; now: number }[] = [],
+  predicted: VisiblePlayer | null = null,
   connected = false;
 let freeCam = false;
 const panKeys = new Set<string>();
@@ -97,7 +98,7 @@ async function sendInput() {
       token,
       keys: keyboard | touch,
       seq: ++sequence,
-      onFoot: !!predicted?.parkedCar,
+      onFoot: !!predicted?.parkedCarId,
     });
     if (!result.ok && result.status === 401 && session?.token === token) {
       reset();
@@ -137,7 +138,7 @@ async function openDoor() {
     const result = await post('/vehicle', {
       token: session.token,
       seq: ++sequence,
-      action: predicted.parkedCar ? 'enter' : 'exit',
+      action: predicted.parkedCarId ? 'enter' : 'exit',
     });
     if (!result.ok) notice(result.error || 'Could not use the car door.');
   } catch {
@@ -275,7 +276,7 @@ subscribeToRoom(
     if (frames.length > 6) frames.shift();
     const player = state.players.find((p) => p.id === session?.id);
     if (player) predicted = { ...player };
-    const count = state.players.length;
+    const count = state.playerCount;
     el('count').textContent = count === 1 ? '1 player' : count + ' players';
     updateUI();
   },
@@ -292,15 +293,13 @@ subscribeToRoom(
   },
 );
 
-function interpolate<T extends Position & { id: string; angle?: number; parkedCar?: unknown }>(
-  list: T[],
-  before: T[],
-  t: number,
-): T[] {
+function interpolate<
+  T extends Position & { id: string; angle?: number; parkedCarId?: string | null },
+>(list: T[], before: T[], t: number): T[] {
   const prior = new Map(before.map((o) => [o.id, o]));
   return list.map((v) => {
     const p = prior.get(v.id);
-    if (!p || !!p.parkedCar !== !!v.parkedCar || Math.hypot(v.x - p.x, v.y - p.y) > 100) return v;
+    if (!p || p.parkedCarId !== v.parkedCarId || Math.hypot(v.x - p.x, v.y - p.y) > 100) return v;
     return {
       ...v,
       x: p.x + (v.x - p.x) * t,
@@ -312,7 +311,7 @@ function interpolate<T extends Position & { id: string; angle?: number; parkedCa
     };
   });
 }
-function scene(now: number): World {
+function scene(now: number): Snapshot {
   if (!frames.length) return initial;
   const target = now - 90;
   const end = frames.findIndex((f) => f.now >= target);
@@ -322,7 +321,7 @@ function scene(now: number): World {
     b = frames[end],
     t = (target - a.now) / (b.now - a.now);
   return {
-    race: b.state.race,
+    ...b.state,
     time: a.state.time + (b.state.time - a.state.time) * t,
     players: interpolate(b.state.players, a.state.players, t),
     traffic: interpolate(b.state.traffic, a.state.traffic, t),
@@ -335,16 +334,20 @@ function draw(now: number) {
   let world = scene(now);
   if (predicted && session && connected) {
     const latest = frames.at(-1)!.state;
-    const { vehicles, people } = roadUsers(latest);
+    const { vehicles, people } = snapshotRoadUsers(latest);
     const terrainReady = !!mapChunk(predicted.x, predicted.y);
-    if (predicted.parkedCar) {
+    if (predicted.parkedCarId) {
       if (terrainReady) walk(predicted, keyboard | touch, dt, vehicles, people);
-      const dx = predicted.parkedCar.x - predicted.x,
-        dy = predicted.parkedCar.y - predicted.y;
-      const directions = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
-      const heading = directions[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8];
-      el('car-location').textContent =
-        'Car · ' + Math.round(Math.hypot(dx, dy) / 5) + ' m ' + heading;
+      const carId = predicted.parkedCarId;
+      const parking = latest.parkingPosition ?? latest.parkedCars.find((car) => car.id === carId);
+      if (parking) {
+        const dx = parking.x - predicted.x,
+          dy = parking.y - predicted.y;
+        const directions = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+        const heading = directions[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8];
+        el('car-location').textContent =
+          'Car · ' + Math.round(Math.hypot(dx, dy) / 5) + ' m ' + heading;
+      } else el('car-location').textContent = 'Locating car…';
     } else if (terrainReady && !heldOnGrid(latest.race, session.id)) {
       drive(predicted, keyboard | touch, dt, vehicles, people, false);
     }

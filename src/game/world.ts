@@ -424,10 +424,11 @@ export function placePlayer(
   color: string,
   world: World,
   options?: GarageOptions,
+  positions: Iterable<number[]> = startingPositions(),
 ): Player | null {
   const { vehicles, people } = roadUsers(world);
   const style = appearance(options);
-  for (const [x, y, angle] of startingPositions()) {
+  for (const [x, y, angle] of positions) {
     const v: Player = {
       id,
       name,

@@ -1,5 +1,5 @@
 import type { ChatEvent } from '../protocol/chat';
-import type { World } from '../game/game-types';
+import type { Snapshot } from '../protocol/snapshots';
 import type { Commands, Credentials } from '../protocol/commands';
 import { areaKey } from '../protocol/view';
 import type { CellBounds } from '../game/spatial';
@@ -25,7 +25,7 @@ export async function post<P extends keyof Commands>(
 }
 
 export function subscribeToRoom(
-  onSnapshot: (world: World) => void,
+  onSnapshot: (world: Snapshot) => void,
   onChat: (update: ChatEvent) => void,
   onDisconnect: () => void,
   currentView: () => { area: CellBounds; token?: string },

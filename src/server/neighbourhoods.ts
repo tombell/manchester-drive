@@ -3,10 +3,27 @@ import { cellKey, SpatialGrid, type CellBounds } from '../game/spatial';
 import { encodeSnapshot } from '../protocol/snapshots';
 import { areaKey, cameraCells, viewCellSize } from '../protocol/view';
 
-// A single simulation owns every NPC. Cameras with the same coverage share encoded frames.
+function inArea(area: CellBounds, p: Position) {
+  const col = Math.floor(p.x / viewCellSize),
+    row = Math.floor(p.y / viewCellSize);
+  return col >= area.left && col <= area.right && row >= area.top && row <= area.bottom;
+}
+
+// A single simulation owns every actor. Cameras with the same coverage share encoded frames.
 export function neighbourhoodFrames(world: World) {
   const cars = new SpatialGrid(viewCellSize, world.traffic);
   const people = new SpatialGrid(viewCellSize, world.people);
+  const players = new SpatialGrid(
+    viewCellSize,
+    world.players.map(({ parkedCar, ...body }) => ({
+      ...body,
+      parkedCarId: parkedCar?.id ?? null,
+    })),
+  );
+  const parked = new SpatialGrid(
+    viewCellSize,
+    world.players.flatMap((p) => (p.parkedCar ? [p.parkedCar] : [])),
+  );
   const frames = new Map<string, Uint8Array>();
   return (camera: CellBounds, driver?: Player) => {
     const local = driver && cameraCells(driver, 0, 0);
@@ -18,14 +35,29 @@ export function neighbourhoodFrames(world: World) {
         local.bottom > camera.bottom)
         ? local
         : undefined;
-    const key = extra ? areaKey(camera) + '/' + areaKey(extra) : areaKey(camera);
+    const parking = driver?.parkedCar;
+    const marker =
+      parking && !inArea(camera, parking) && !(extra && inArea(extra, parking))
+        ? parking
+        : undefined;
+    const areas = extra ? areaKey(camera) + '/' + areaKey(extra) : areaKey(camera);
+    const key = marker ? areas + '/' + marker.id : areas;
     let frame = frames.get(key);
     if (!frame) {
       function visible<T extends Position>(grid: SpatialGrid<T>) {
         const inView = grid.inCells(camera);
         return extra ? [...new Set([...inView, ...grid.inCells(extra)])] : inView;
       }
-      frame = encodeSnapshot({ ...world, traffic: visible(cars), people: visible(people) });
+      frame = encodeSnapshot({
+        time: world.time,
+        race: world.race,
+        playerCount: world.players.length,
+        players: visible(players),
+        parkedCars: visible(parked),
+        traffic: visible(cars),
+        people: visible(people),
+        parkingPosition: marker && { x: marker.x, y: marker.y },
+      });
       frames.set(key, frame);
     }
     return frame;

@@ -1,7 +1,7 @@
 import { expect, test, onTestFinished } from 'bun:test';
 import type { ChatEvent } from '../src/protocol/chat';
 import type { Credentials } from '../src/protocol/commands';
-import type { World } from '../src/game/game-types';
+import type { Snapshot } from '../src/protocol/snapshots';
 import { models } from '../src/game/garage';
 import { cameraCells } from '../src/protocol/view';
 import { JUNCTION } from '../src/game/streets';
@@ -16,7 +16,7 @@ async function readEvents<K extends 'message' | 'chat'>(
   const res = await fetch(new URL('/events', url), { signal });
   const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = '';
-  return async (): Promise<K extends 'chat' ? ChatEvent : World> => {
+  return async (): Promise<K extends 'chat' ? ChatEvent : Snapshot> => {
     for (;;) {
       while (!buffer.includes('\n\n')) {
         const { value, done } = await reader.read();
@@ -54,12 +54,12 @@ test('two clients share the same authoritative cars and controls belong to their
     [1, 2].map(() => readEvents(server.url, abort.signal, 'message')),
   );
   const [initial] = await Promise.all(streams.map((read) => read()));
-  const driver = (world: World, id: string) => world.players.find((p) => p.id === id)!;
+  const driver = (world: Snapshot, id: string) => world.players.find((p) => p.id === id)!;
   expect(initial.players.length).toBe(2);
   expect((await post('/input', { token: b.id, seq: 1, keys: 1 })).status).toBe(401);
   await post('/input', { token: a.token, seq: 2, keys: 1 });
   await post('/input', { token: a.token, seq: 1, keys: 0 });
-  async function moving(read: () => Promise<World>) {
+  async function moving(read: () => Promise<Snapshot>) {
     for (let i = 0; i < 25; i++) {
       const frame = await read();
       if (driver(frame, a.id).x > driver(initial, a.id).x + 1) return frame;
@@ -78,17 +78,18 @@ test('two clients share the same authoritative cars and controls belong to their
   expect((await post('/vehicle', { token: b.token, action: 'exit', seq: 2 })).status).toBe(200);
   expect((await post('/vehicle', { token: b.token, action: 'exit', seq: 2 })).status).toBe(409);
   await post('/input', { token: b.token, seq: 1, keys: 1 });
-  async function parked(read: () => Promise<World>) {
+  async function parked(read: () => Promise<Snapshot>) {
     let frame;
     do {
       frame = await read();
-    } while (!driver(frame, b.id).parkedCar);
-    return driver(frame, b.id);
+    } while (!driver(frame, b.id).parkedCarId);
+    const walker = driver(frame, b.id);
+    return { walker, car: frame.parkedCars.find(c => c.id === walker.parkedCarId)! };
   }
   const [walker, seen] = await Promise.all(streams.map(parked));
   expect(walker).toStrictEqual(seen);
-  expect(walker.speed).toBe(0);
-  expect(walker.parkedCar!.x).toBe(driver(initial, b.id).x);
+  expect(walker.walker.speed).toBe(0);
+  expect(walker.car.x).toBe(driver(initial, b.id).x);
   expect((await post('/vehicle', { token: b.token, action: 'enter', seq: 3 })).status).toBe(200);
   await post('/leave', { token: a.token });
   let frame;
@@ -115,9 +116,17 @@ test('drivers can join together after the Piccadilly bays fill up', async () => 
       return (await response.json()) as Credentials;
     }),
   );
-  const read = await readEvents(server.url, abort.signal, 'message');
-  const { players } = await read();
-  expect(players.map((p) => p.id).sort()).toEqual(drivers.map((d) => d.id).sort());
+  let viewer = '';
+  const read = await readEvents(server.url, abort.signal, 'message', id => { viewer = id; });
+  const first = await read();
+  expect(first.playerCount).toBe(drivers.length);
+  await fetch(new URL('/view', server.url), {
+    method: 'POST', body: JSON.stringify({ viewer, area: cameraCells(JUNCTION, 4000, 4000) }),
+  });
+  let frame = first;
+  while (frame.players.length !== drivers.length) frame = await read();
+  const { players } = frame;
+  expect(players.map(p => p.id).sort()).toEqual(drivers.map(d => d.id).sort());
   expect(new Set(drivers.map((d) => d.token)).size).toBe(drivers.length);
   for (const [i, player] of players.entries()) {
     expect(player.color).toMatch(/^#[0-9a-f]{6}$/i);
@@ -151,19 +160,21 @@ test('separate neighbourhood views converge on the same NPCs and free cam keeps 
   const setView = async (i: number, area: typeof north, driver?: string) => {
     expect((await post('/view', { viewer: viewers[i], area, token: driver })).status).toBe(200);
   };
-  async function until(read: () => Promise<World>, match: (w: World) => boolean) {
+  async function until(read: () => Promise<Snapshot>, match: (w: Snapshot) => boolean) {
     for (let i = 0; i < 20; i++) {
       const w = await read();
       if (match(w)) return w;
     }
     throw new Error('Camera subscription did not follow its viewer');
   }
-  const inNorth = (w: World) => w.traffic.some((car) => car.lane === 2);
-  const inSouth = (w: World) => w.traffic.some((car) => car.lane === 0);
+  const inNorth = (w: Snapshot) => w.traffic.some((car) => car.lane === 2);
+  const inSouth = (w: Snapshot) => w.traffic.some((car) => car.lane === 0);
   await Promise.all([setView(0, south, token), setView(1, north)]);
   const southFrame = await ada(),
     northFrame = await until(spectator, inNorth);
   expect(inSouth(southFrame)).toBe(true);
+  expect(northFrame.playerCount).toBe(1);
+  expect(northFrame.players).toHaveLength(0);
   const southIds = new Set([...southFrame.people, ...southFrame.traffic].map((v) => v.id));
   expect(northFrame.people.length).toBeGreaterThan(0);
   expect([...northFrame.people, ...northFrame.traffic].every((v) => !southIds.has(v.id))).toBe(
@@ -178,6 +189,7 @@ test('separate neighbourhood views converge on the same NPCs and free cam keeps 
   while (combined.time < shared.time) combined = await ada();
   expect(combined.time).toBe(shared.time);
   expect(inSouth(combined)).toBe(true);
+  expect(combined.players.map(p => p.name)).toEqual(['Ada']);
   for (const kind of ['traffic', 'people'] as const) {
     expect(
       combined[kind].filter((npc) => shared[kind].some((other) => other.id === npc.id)),

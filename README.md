@@ -50,6 +50,21 @@ The tests cover driving and reversing, collisions and recovery, clear spawns, tr
 
 For a playtest, leave one browser on Piccadilly and pan north in the other to watch traffic on Shudehill. Bring the cameras back together at the Lever Street crossing near Dale Street. Check that both drivers see the same pedestrian and waiting traffic. Watch the gap between queued cars at a red light. Tap a parked car, then try a faster bump and a glancing hit against a building. Check both views as one driver leaves and rejoins.
 
+## Load testing
+
+Run the dedicated fixture with `bun run load:server`. From a second terminal, run either scenario:
+
+```fish
+bun run load:test crowd 32 60
+bun run load:test spread 32 60
+```
+
+The arguments select the layout, number of connected players and measurement duration in seconds. The fixture places drivers in clear mapped bays near Piccadilly or across eight locations. Each client reads its own event stream and sends driving or walking input. Some players park or use free cam. Collection starts after six seconds of warm-up.
+
+For measurements across two private hosts, set `HOST` on the game host to its private bind address. Set `FIXTURE_URL` on the load generator to the game host's private control URL. The control port defaults to 4174 and the game port to 4173. Use the dedicated fixture on a private network. It includes benchmark controls and spawn placement that the deployed game does not expose.
+
+The runner prints a JSON record with simulation rate, fixed-step processing time (including snapshot publication), peak game-process RSS, received SSE bandwidth, frames per client, input HTTP acknowledgement latency and failures. Timing excludes browser rendering. Run scenarios sequentially so the room is empty at the start of each run.
+
 ## Implementation
 
 The game runs as one Bun application. Its source is organised by responsibility.
@@ -63,7 +78,7 @@ The game runs as one Bun application. Its source is organised by responsibility.
 
 The HTTP routes validate incoming commands and pass them to the room. The room owns player sessions, input ordering and simulation time. It can run directly in a test with a controlled clock.
 
-Players and nearby NPCs update at 60 Hz. Unobserved NPCs continue their routes at 10 Hz, with collision and crossing checks. Every browser receives 15 snapshots per second over Server-Sent Events. NPC snapshots cover the camera plus a margin and the area around the driver when free cam is detached. Player presence, races and chat are shared across the room. Each browser sends sequenced control changes over HTTP, predicts its own car between snapshots and interpolates other road users. A lost heartbeat releases the controls and eventually removes the car. The shared room lasts for the lifetime of the server.
+Players and nearby NPCs update at 60 Hz. Unobserved NPCs continue their routes at 10 Hz, with collision and crossing checks. Every browser receives 15 snapshots per second over Server-Sent Events. Each snapshot includes the drivers, walkers, parked cars and NPCs near the camera and the driver. A player on foot also receives directions to their own parked car. The player count, races and chat are shared across the room. Each browser sends sequenced control changes over HTTP, predicts its own car between snapshots and interpolates other road users. A lost heartbeat releases the controls and eventually removes the car. The shared room lasts for the lifetime of the server.
 
 Cars and walkers collide with buildings, vehicles, other players and the edge of the playable area. Cars also stop at the banks of mapped water and can cross it on road bridges. Tree trunks, bus stop poles, fingerposts, traffic lights, benches, fixed bollards, litter bins, pillar boxes and planters also have solid bases. You can pass under branches and behind signs. Traffic follows four mapped circuits across Piccadilly, Shudehill and the Northern Quarter, brakes for queues and crossings, and indicates before turning. Signal timings and lane positions are game approximations. Free driving allows either direction. The race and all traffic routes follow mapped motorcar access and one-way directions.
 

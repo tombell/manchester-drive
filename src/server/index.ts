@@ -14,9 +14,9 @@ export function createGameServer({
   hostname = Bun.env.HOST || '127.0.0.1',
   port = Number(Bun.env.PORT || 4173),
   development = false,
+  room = new GameRoom(),
 } = {}) {
   useServerMap();
-  const room = new GameRoom();
   interface Viewer {
     stream: ReadableStreamDefaultController<Uint8Array>;
     area: CellBounds;

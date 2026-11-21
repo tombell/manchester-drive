@@ -8,7 +8,9 @@
     "start": "bun src/server/index.ts",
     "build": "bun build --compile --production --minify src/server/index.ts --outfile dist/manchester-drive",
     "typecheck": "bun --bun tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "load:server": "bun scripts/load-server.ts",
+    "load:test": "bun scripts/load-test.ts"
   },
   "dependencies": {
     "hono": "4.13.19",

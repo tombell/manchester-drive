@@ -1,6 +1,7 @@
 import type { MapData, Point } from '../game/map-types';
 import type { Appearance } from '../game/garage';
-import type { Player, Pedestrian, Pose, Position, Vehicle, World } from '../game/game-types';
+import type { VisiblePlayer, Snapshot } from '../protocol/snapshots';
+import type { Pedestrian, Pose, Position, Vehicle } from '../game/game-types';
 import type { StreetObject } from '../game/streets';
 import { gates, raceEntry } from '../game/race';
 import { circuit, crosswalks, streetObjects, mapTree } from '../game/streets';
@@ -23,7 +24,7 @@ type Tile = Pick<MapData, 'roads' | 'paths' | 'areas' | 'buildings'> & {
   labels: Label[];
 };
 type CarSprite = Omit<Vehicle, 'id' | 'speed'>;
-type CharacterSprite = Pick<Player, 'x' | 'y' | 'angle' | 'speed' | 'jacket' | 'skin'>;
+type CharacterSprite = Pick<VisiblePlayer, 'x' | 'y' | 'angle' | 'speed' | 'jacket' | 'skin'>;
 
 function rect(g: Context, x: number, y: number, w: number, h: number, color: string) {
   g.fillStyle = color;
@@ -620,7 +621,7 @@ export function makeRenderer(canvas: HTMLCanvasElement) {
     g = canvas.getContext('2d', { alpha: false })!;
   const buffer = document.createElement('canvas'),
     b = buffer.getContext('2d', { alpha: false })!;
-  return (world: World, me: string | undefined, focus: Position) => {
+  return (world: Snapshot, me: string | undefined, focus: Position) => {
     const w = canvas.clientWidth,
       h = canvas.clientHeight,
       dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -650,7 +651,8 @@ export function makeRenderer(canvas: HTMLCanvasElement) {
     const margin = 32; // Includes the tallest tree crown outside the viewport.
     const visible = (o: Position) =>
       o.x >= x - margin && o.x <= x + vw + margin && o.y >= y - margin && o.y <= y + vh + margin;
-    const scene: (StreetObject | Vehicle | Pedestrian | Player)[] = streetObjects.filter(visible);
+    const scene: (StreetObject | Vehicle | Pedestrian | VisiblePlayer)[] =
+      streetObjects.filter(visible);
     // Chunks include a margin. Draw each regional trunk from its owning chunk once.
     for (let i = Math.floor((x - margin) / chunkSize); i <= (x + vw + margin) / chunkSize; i++) {
       for (let j = Math.floor((y - margin) / chunkSize); j <= (y + vh + margin) / chunkSize; j++) {
@@ -668,17 +670,14 @@ export function makeRenderer(canvas: HTMLCanvasElement) {
         }
       }
     }
-    for (const p of world.players) {
-      if (p.parkedCar && visible(p.parkedCar)) scene.push(p.parkedCar);
-    }
-    for (const actors of [world.traffic, world.people, world.players]) {
+    for (const actors of [world.traffic, world.people, world.players, world.parkedCars]) {
       for (const actor of actors) if (visible(actor)) scene.push(actor);
     }
     scene.sort((a, b) => a.y - b.y);
     const signal = signals(world.time).vertical;
     for (const item of scene) {
       if ('kind' in item) drawStreetObject(b, item, signal);
-      else if ('parkedCar' in item && item.parkedCar) character(b, item, world.time);
+      else if ('parkedCarId' in item && item.parkedCarId) character(b, item, world.time);
       else if ('route' in item) pedestrian(b, item);
       else car(b, item, item.id === me, world.time);
     }
