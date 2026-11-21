@@ -279,6 +279,29 @@ test('global chat authenticates the sender, reaches both clients and restores hi
   expect(await reconnect()).toEqual({ type: 'history', messages: [a.message] });
 });
 
+test('a restarting server reports its build and tells viewers to reconnect', async () => {
+  const server = createGameServer({ hostname: '127.0.0.1', port: 0, build: 'deploy-1' });
+  let stopped = false;
+  onTestFinished(async () => {
+    if (!stopped) await server.stop();
+  });
+  expect((await fetch(new URL('/healthz', server.url))).status).toBe(200);
+  const res = await fetch(new URL('/events', server.url));
+  const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader();
+  let stream = '';
+  while (!stream.includes('event: viewer')) stream += (await reader.read()).value;
+  expect(stream).toStartWith('retry: 500\nevent: build\ndata: deploy-1\n\n');
+  stopped = true;
+  const stopping = server.stop();
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    stream += value;
+  }
+  await stopping;
+  expect(stream).toEndWith('event: restart\ndata: \n\n');
+});
+
 test('local speech reaches nearby players on their live streams and stays out of history', async () => {
   const server = createGameServer({ hostname: '127.0.0.1', port: 0 });
   const abort = new AbortController();

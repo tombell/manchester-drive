@@ -34,6 +34,16 @@ export function decodeSnapshot(data: string): Snapshot {
   return JSON.parse(data);
 }
 
+// The client reloads when a reconnect lands on a different build.
+export function encodeHello(viewer: string, build: string) {
+  return encoder.encode(
+    'retry: 500\nevent: build\ndata: ' + build + '\n\nevent: viewer\ndata: ' + viewer + '\n\n',
+  );
+}
+
+// Sent before a deploy or restart closes the stream.
+export const restartEvent = encoder.encode('event: restart\ndata: \n\n');
+
 export function encodeChat(event: ChatEvent) {
   return encoder.encode('event: chat\ndata: ' + JSON.stringify(event) + '\n\n');
 }
