@@ -46,11 +46,16 @@
             <use id="overview-terrain"></use>
             <use id="overview-places"></use>
           </svg>
+          <canvas id="overview-streets" hidden aria-hidden="true"></canvas>
           <div id="overview-markers"></div>
+          <div class="overview-zoom" role="group" aria-label="Map zoom">
+            <button id="overview-zoom-in" type="button" aria-label="Zoom in" title="Zoom in">+</button>
+            <button id="overview-zoom-out" type="button" aria-label="Zoom out" title="Zoom out">−</button>
+          </div>
         </div>
         <div class="overview-footer">
           <span id="overview-details"></span>
-          <button id="overview-reset" type="button" aria-describedby="overview-details" hidden>Whole region</button>
+          <button id="overview-reset" type="button" aria-describedby="overview-details" disabled>Whole region</button>
           <a class="attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>
         </div>
       </dialog>

@@ -45,7 +45,7 @@ def write_overview(source, edge, target):
         lines = "".join(layers[layer])
         svg.append(f'<path fill="none" stroke="{ink}" stroke-width="{width}" '
                    f'vector-effect="non-scaling-stroke" stroke-linecap="round" d="{lines}"/>')
-    svg.extend(['</g>', '<g id="places" fill="#f3efdd" stroke="#334138" stroke-width="380" '
+    svg.extend(['</g>', '<g id="places" fill="#f3efdd" stroke="#334138" '
                 'paint-order="stroke" font-family="sans-serif" font-weight="bold" '
                 'text-anchor="middle">'])
     for name, (x, y) in sorted(places.items()):

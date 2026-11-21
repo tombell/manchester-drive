@@ -15,7 +15,7 @@ Open [the game](http://127.0.0.1:4173) in two browser windows, choose a name, ve
 
 Select **Free cam** to explore before joining, while driving or on foot. Drag the map with a mouse or finger, or pan with **WASD** or the **arrow keys**. Press **Esc** or use the camera button to return. If you already have a car, it coasts while the camera is detached.
 
-Select **World map** or press **M** to see everyone inside the M60. Arrows show drivers, dots show players on foot and a gold ring marks you. Select a marker to see player names and zoom in, or **Whole region** to zoom back out. **M**, **Esc** or **Close** returns to the game.
+Select **World map** or press **M** to see everyone inside the M60. Arrows show drivers, dots show players on foot and a gold ring marks you. Select a marker to follow players, or explore with the **+** and **−** buttons, mouse wheel or pinch gesture. Drag to pan. Individual streets and their names appear as you zoom into a neighbourhood. **Whole region** restores the overview. **M**, **Esc** or **Close** returns to the game.
 
 Global chat stays visible in the bottom-left corner. Click the message field or press **T** to type, **Enter** to send and **Esc** to return to the game. Joined players can send messages from anywhere on the map, including on foot and in free cam. Spectators can read along. The room keeps its most recent 50 messages in memory until the server restarts.
 

@@ -1,5 +1,7 @@
 import type { Player, Position } from '../game/game-types';
 import { boundary } from '../game/region';
+import { bindMapGestures } from './world-map-gestures';
+import { makeWorldMapStreets, type MapView } from './world-map-streets';
 
 function bounds(points: readonly Position[]) {
   let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
@@ -49,12 +51,44 @@ export function setupWorldMap(releaseControls: () => void) {
   const svg = plot.querySelector('svg')!;
   const places = svg.querySelector<SVGUseElement>('#overview-places')!;
   const layer = plot.querySelector<HTMLElement>('#overview-markers')!;
+  const streetCanvas = plot.querySelector('canvas')!;
+  const streets = makeWorldMapStreets(streetCanvas);
+  const zoomIn = plot.querySelector<HTMLButtonElement>('#overview-zoom-in')!;
+  const zoomOut = plot.querySelector<HTMLButtonElement>('#overview-zoom-out')!;
   const reset = dialog.querySelector<HTMLButtonElement>('#overview-reset')!;
   const details = dialog.querySelector<HTMLElement>('#overview-details')!;
   const count = dialog.querySelector<HTMLElement>('#overview-count')!;
   let players: Player[] = [], localId: string | undefined, online = false;
   let selection = new Set<string>();
   const buttons = new Map<string, HTMLButtonElement>();
+  const maxScale = 4;
+  let view: MapView;
+  let manual: { centre: Position; scale: number } | undefined;
+
+  function changeView(from: Position, to: Position, factor: number) {
+    const width = plot.clientWidth, height = plot.clientHeight;
+    const home = fit(region, width, height);
+    const scale = Math.max(home.scale, Math.min(maxScale, view.scale * factor));
+    const x = view.x + from.x / view.scale + (width / 2 - to.x) / scale;
+    const y = view.y + from.y / view.scale + (height / 2 - to.y) / scale;
+    manual = scale === home.scale ? undefined : {
+      centre: {
+        x: Math.max(region.left, Math.min(region.right, x)),
+        y: Math.max(region.top, Math.min(region.bottom, y)),
+      },
+      scale,
+    };
+    selection.clear();
+    draw();
+  }
+
+  function zoom(factor: number) {
+    const centre = { x: plot.clientWidth / 2, y: plot.clientHeight / 2 };
+    changeView(centre, centre, factor);
+  }
+  zoomIn.onclick = () => zoom(2);
+  zoomOut.onclick = () => zoom(0.5);
+  const releasePointers = bindMapGestures(plot, changeView);
 
   function describe(p: Player) {
     return p.name + (p.id === localId ? ' (you)' : '') + (p.parkedCar ? ' · on foot' : ' · driving');
@@ -66,12 +100,24 @@ export function setupWorldMap(releaseControls: () => void) {
     if (!width || !height) return;
     const selected = players.filter((p) => selection.has(p.id));
     if (!selected.length) selection.clear();
-    const view = fit(selected.length ? bounds(selected) : region, width, height);
+    const home = fit(region, width, height);
+    if (manual && manual.scale <= home.scale) manual = undefined;
+    if (manual) {
+      view = {
+        x: manual.centre.x - width / (2 * manual.scale),
+        y: manual.centre.y - height / (2 * manual.scale),
+        scale: manual.scale,
+      };
+    } else view = selected.length ? fit(bounds(selected), width, height) : home;
+    zoomIn.disabled = view.scale >= maxScale;
+    zoomOut.disabled = view.scale <= home.scale;
+    streets.draw(view, width, height);
     svg.setAttribute('viewBox', [view.x, view.y, width / view.scale, height / view.scale].join(' '));
-    places.style.display = selected.length ? 'none' : '';
+    places.style.display = streetCanvas.hidden ? '' : 'none';
+    places.setAttribute('stroke-width', String(2 / view.scale));
     places.setAttribute('font-size', String(11 / view.scale));
     places.setAttribute('transform', 'translate(0 ' + (-20 / view.scale) + ')');
-    reset.hidden = !selected.length;
+    reset.disabled = !selected.length && !manual;
     count.textContent = online
       ? players.length + (players.length === 1 ? ' player' : ' players')
       : 'Reconnecting…';
@@ -104,6 +150,7 @@ export function setupWorldMap(releaseControls: () => void) {
       button.title = marker.players.map(describe).join(', ');
       button.setAttribute('aria-label', button.title);
       button.onclick = () => {
+        manual = undefined;
         selection = new Set(marker.players.map((p) => p.id));
         draw();
         reset.focus();
@@ -122,6 +169,7 @@ export function setupWorldMap(releaseControls: () => void) {
       return;
     }
     releaseControls();
+    manual = undefined;
     selection.clear();
     svg.querySelector('#overview-terrain')!.setAttribute('href', '/world-map.svg#terrain');
     places.setAttribute('href', '/world-map.svg#places');
@@ -131,10 +179,15 @@ export function setupWorldMap(releaseControls: () => void) {
   document.getElementById('open-world-map')!.onclick = toggle;
   dialog.querySelector<HTMLButtonElement>('#overview-close')!.onclick = () => dialog.close();
   reset.onclick = () => {
+    manual = undefined;
     selection.clear();
     draw();
     dialog.querySelector<HTMLButtonElement>('#overview-close')!.focus();
   };
+  dialog.addEventListener('close', () => {
+    releasePointers();
+    streets.clear();
+  });
   new ResizeObserver(draw).observe(plot);
 
   return {

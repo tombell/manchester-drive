@@ -706,11 +706,22 @@ kbd {
   padding: 0 12px;
 }
 .overview-footer {
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   border-top: 1px solid var(--rule);
 }
+@media (max-width: 560px) {
+  .overview-footer {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 4px;
+  }
+  .overview-footer .attribution {
+    grid-column: 1 / -1;
+  }
+}
 #overview-details {
-  max-height: 4em;
+  max-height: 2.4em;
+  line-height: 1.2;
   overflow: auto;
   overflow-wrap: anywhere;
 }
@@ -718,6 +729,38 @@ kbd {
   position: relative;
   overflow: hidden;
   background: #28332d;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+#overview-plot:active {
+  cursor: grabbing;
+}
+#overview-streets {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.overview-zoom {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  display: grid;
+  gap: 2px;
+}
+#world-map .overview-zoom button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 1.2rem;
+  color: var(--paper);
+  background: var(--ink);
+  border-color: #758173;
+}
+#world-map button:disabled {
+  cursor: default;
 }
 #overview-plot svg {
   display: block;

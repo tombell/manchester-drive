@@ -216,7 +216,7 @@ function footprint(g: Context, building: MapData['buildings'][number], rng: () =
   g.restore();
 }
 
-function streetLabels(chunk: MapChunk) {
+export function streetLabels(chunk: MapChunk) {
   // Place street names on their longest segment, with room between labels.
   const labels: Label[] = [];
   for (const road of namedStreets(chunk)) {
