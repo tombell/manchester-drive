@@ -52,11 +52,22 @@ export function setupChat(releaseControls: () => void) {
     status.hidden = !status.textContent;
   }
   input.oninput = refreshForm;
-  channel.onchange = () => {
+  function channelChanged() {
     error = '';
     refreshForm();
+  }
+  channel.onchange = () => {
+    channelChanged();
     input.focus();
   };
+  window.addEventListener('keydown', (event) => {
+    if (!token || event.key !== 'Enter' || !event.altKey) return;
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.isComposing) return;
+    event.preventDefault();
+    if (event.repeat || channel.disabled) return;
+    channel.value = channel.value === 'global' ? 'local' : 'global';
+    channelChanged();
+  });
   form.onsubmit = async (event) => {
     event.preventDefault();
     const draft = input.value,

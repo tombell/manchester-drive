@@ -17,7 +17,7 @@ Select **Free cam** to explore before joining, while driving or on foot. Drag th
 
 Select **World map** or press **M** to see everyone inside the M60. Arrows show drivers, dots show players on foot and a gold ring marks you. Select a marker to follow players, or explore with the **+** and **−** buttons, mouse wheel or pinch gesture. Drag to pan. Individual streets and their names appear as you zoom into a neighbourhood. **Whole region** restores the overview. **M**, **Esc** or **Close** returns to the game.
 
-Click the chat field or press **T** to type, **Enter** to send and **Esc** to return to the game. **Global** messages reach everyone, including spectators. The room keeps the most recent 50 global messages until the server restarts.
+Click the chat field or press **T** to type, **Enter** to send and **Esc** to return to the game. Press **Alt+Enter** (**Option+Return** on Mac) to switch between Global and Local during play or while typing. **Global** messages reach everyone, including spectators. The room keeps the most recent 50 global messages until the server restarts.
 
 Choose **Local** to speak to players within 50 metres. Your message appears above your car or character for six seconds. Your newest message replaces your previous bubble. In free cam, hearing range still follows your player.
 
