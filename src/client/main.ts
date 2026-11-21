@@ -6,7 +6,7 @@ import { snapshotRoadUsers, type Snapshot, type VisiblePlayer } from '../protoco
 import { cameraCells } from '../protocol/view';
 import { streetAt } from '../game/streets';
 import { createWorld, drive, walk, JUNCTION } from '../game/world';
-import type { Credentials } from '../protocol/commands';
+import type { Commands, Credentials } from '../protocol/commands';
 import { setupChat } from './chat';
 import { el, notice, outfit, setupGarage, updateHud } from './hud';
 import { leaveOnPageHide, post, subscribeToRoom } from './network';
@@ -45,6 +45,24 @@ let doorBusy = false,
   raceBusy = false,
   dismissedRace: string | undefined;
 setupGarage();
+// The driver's details survive a reload so a deploy can put them back in a car.
+const driverKey = 'manchester-drive:driver';
+function savedDriver(): Commands['/join'] | null {
+  try {
+    return JSON.parse(sessionStorage.getItem(driverKey) ?? 'null');
+  } catch {
+    return null;
+  }
+}
+function saveDriver(driver: Commands['/join'] | null) {
+  try {
+    if (driver) sessionStorage.setItem(driverKey, JSON.stringify(driver));
+    else sessionStorage.removeItem(driverKey);
+  } catch {
+    /* Without storage the driver joins again by hand. */
+  }
+}
+let rejoinTried = false;
 const chat = setupChat(release);
 const worldMap = setupWorldMap(release);
 
@@ -106,21 +124,23 @@ async function sendInput() {
     if (!result.ok && result.status === 401 && session?.token === token) {
       reset();
       notice(result.error);
+      rejoinTried = false;
+      rejoin();
     }
   } catch {
     /* EventSource reports the connection state and the heartbeat retries. */
   }
 }
-el('join').addEventListener('submit', async (event) => {
-  event.preventDefault();
+async function join(driver: Commands['/join']) {
   if (busy || session || !connected) return;
   busy = true;
   updateUI();
   notice('');
   try {
-    const result = await post('/join', { name: el('name').value, ...outfit() });
+    const result = await post('/join', driver);
     if (!result.ok) throw new Error(result.error || 'Could not join.');
     session = result.data;
+    saveDriver(driver);
     sequence = 0;
     el('name').blur();
     sendInput();
@@ -130,7 +150,18 @@ el('join').addEventListener('submit', async (event) => {
     busy = false;
     updateUI();
   }
+}
+el('join').addEventListener('submit', (event) => {
+  event.preventDefault();
+  join({ name: el('name').value, ...outfit() });
 });
+// Try once per connection, so a failed join falls back to the join form.
+function rejoin() {
+  const driver = savedDriver();
+  if (!driver || session || busy || !connected || rejoinTried) return;
+  rejoinTried = true;
+  join(driver);
+}
 async function openDoor() {
   if (!session || !predicted || !connected || doorBusy || freeCam) return;
   doorBusy = true;
@@ -158,6 +189,7 @@ el('leave').onclick = async () => {
   try {
     const result = await post('/leave', { token });
     if (result.status === 200 || result.status === 401) {
+      saveDriver(null);
       reset();
       notice('');
     } else notice('Could not leave. Try again.');
@@ -280,6 +312,7 @@ setInterval(sendInput, 900);
 
 subscribeToRoom(
   (state) => {
+    if (!connected) notice('');
     connected = true;
     frames.push({ state, now: performance.now() });
     if (frames.length > 6) frames.shift();
@@ -288,10 +321,13 @@ subscribeToRoom(
     const count = state.playerCount;
     el('count').textContent = count === 1 ? '1 player' : count + ' players';
     updateUI();
+    rejoin();
   },
   chat.receive,
-  () => {
+  (restarting) => {
+    if (restarting) notice('The server is updating. Reconnecting…');
     connected = false;
+    rejoinTried = false;
     frames = [];
     release();
     updateUI();

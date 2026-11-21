@@ -43,6 +43,8 @@ Both drivers open the host computer's LAN address on port 4174. Set `PORT` to us
 
 For development, `bun run dev` watches the server and client sources. For production, `bun run build` creates a standalone executable for the build platform at `dist/manchester-drive`. The Dockerfile builds the Linux executable for Fly.io and runs it as an unprivileged user. Both modes use the same `HOST` and `PORT` settings.
 
+Fly.io deploys are blue-green. The new machine must pass `/healthz` before it takes traffic. Fly then sends the old machine `SIGTERM`. The old server tells its viewers it is restarting, then closes their streams. Browsers reconnect within about a second. A browser that reaches a new build reloads the page. Drivers join again automatically, using the name and outfit kept in session storage. Positions, races and chat history do not carry over, because the room exists only in memory.
+
 ## Verify
 
 ```fish

@@ -27,16 +27,27 @@ export async function post<P extends keyof Commands>(
 export function subscribeToRoom(
   onSnapshot: (world: Snapshot) => void,
   onChat: (update: ChatEvent) => void,
-  onDisconnect: () => void,
+  onDisconnect: (restarting: boolean) => void,
   currentView: () => { area: CellBounds; token?: string },
 ) {
   const events = new EventSource(snapshotPath);
   let viewer = '',
     sent = '',
     pending = false,
-    nextAttempt = 0;
+    nextAttempt = 0,
+    build = '',
+    restarting = false;
+  // A reconnect that reaches a new deploy needs the new client and map.
+  events.addEventListener('build', (event) => {
+    if (build && build !== event.data) location.reload();
+    build = event.data;
+  });
+  events.addEventListener('restart', () => {
+    restarting = true;
+  });
   events.addEventListener('viewer', (event) => {
     viewer = event.data;
+    restarting = false;
     sent = '';
     nextAttempt = 0;
     void updateView();
@@ -44,7 +55,7 @@ export function subscribeToRoom(
   events.addEventListener('chat', (event) => onChat(JSON.parse(event.data)));
   events.onerror = () => {
     viewer = '';
-    onDisconnect();
+    onDisconnect(restarting);
   };
   events.onmessage = (event) => onSnapshot(decodeSnapshot(event.data));
 
