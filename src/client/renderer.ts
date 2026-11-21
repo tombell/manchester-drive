@@ -1,3 +1,4 @@
+import type { Gps } from './gps';
 import type { MapData, Point } from '../game/map-types';
 import type { Appearance } from '../game/garage';
 import type { VisiblePlayer, Snapshot } from '../protocol/snapshots';
@@ -621,7 +622,8 @@ export function makeRenderer(canvas: HTMLCanvasElement) {
     g = canvas.getContext('2d', { alpha: false })!;
   const buffer = document.createElement('canvas'),
     b = buffer.getContext('2d', { alpha: false })!;
-  return (world: Snapshot, me: string | undefined, focus: Position) => {
+  let routePath = new Path2D(), lastRoute: Gps['route'] | undefined, lastIndex = -1;
+  return (world: Snapshot, me: string | undefined, focus: Position, gps?: Gps) => {
     const w = canvas.clientWidth,
       h = canvas.clientHeight,
       dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -639,6 +641,24 @@ export function makeRenderer(canvas: HTMLCanvasElement) {
     const y = Math.round(focus.y - vh / 2);
     b.setTransform(1, 0, 0, 1, -x, -y);
     paintTerrain(b, x, y, vw, vh);
+    if (gps?.route.length && !gps.arrived) {
+      if (gps.route !== lastRoute || gps.index !== lastIndex) {
+        lastRoute = gps.route;
+        lastIndex = gps.index;
+        routePath = new Path2D();
+        routePath.moveTo(lastRoute[lastIndex].x, lastRoute[lastIndex].y);
+        for (let i = lastIndex + 1; i < lastRoute.length; i++) routePath.lineTo(lastRoute[i].x, lastRoute[i].y);
+      }
+      b.save();
+      b.lineJoin = b.lineCap = 'round';
+      b.strokeStyle = '#195a70';
+      b.lineWidth = 6;
+      b.stroke(routePath);
+      b.strokeStyle = '#53d9ff';
+      b.lineWidth = 3;
+      b.stroke(routePath);
+      b.restore();
+    }
     const entry = raceEntry(world.race, me);
     if (entry && !entry.withdrawn && entry.elapsed === null && world.race?.phase !== 'open') {
       b.save();

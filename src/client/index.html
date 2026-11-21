@@ -29,7 +29,7 @@
       <div id="speech-bubbles" role="log" aria-label="Nearby speech"></div>
       <div class="location">
         <span class="pin" aria-hidden="true"></span>
-        <div><strong id="street-name">Piccadilly</strong><small>Greater Manchester</small></div>
+        <div><strong id="street-name">Piccadilly</strong><small id="district">Greater Manchester</small><span id="gps-guidance" hidden></span></div>
       </div>
       <div class="north" aria-label="North is up">N<i></i></div>
       <div class="map-actions">
@@ -48,6 +48,10 @@
             <use id="overview-places"></use>
           </svg>
           <canvas id="overview-streets" hidden aria-hidden="true"></canvas>
+          <svg id="overview-navigation" width="100%" height="100%" aria-hidden="true">
+            <polyline id="overview-route" fill="none" stroke="#53d9ff" stroke-width="3" vector-effect="non-scaling-stroke"></polyline>
+          </svg>
+          <span id="overview-pin" role="img" aria-label="GPS destination" hidden></span>
           <div id="overview-markers"></div>
           <div class="overview-zoom" role="group" aria-label="Map zoom">
             <button id="overview-zoom-in" type="button" aria-label="Zoom in" title="Zoom in">+</button>
@@ -56,6 +60,7 @@
         </div>
         <div class="overview-footer">
           <span id="overview-details"></span>
+          <button id="overview-clear" type="button" hidden>Clear GPS</button>
           <button id="overview-reset" type="button" aria-describedby="overview-details" disabled>Whole region</button>
           <a class="attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>
         </div>

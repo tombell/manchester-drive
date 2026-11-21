@@ -4,6 +4,7 @@ import type { Position } from '../game/game-types';
 export function bindMapGestures(
   plot: HTMLElement,
   changeView: (from: Position, to: Position, factor: number) => void,
+  selectPoint: (point: Position) => void,
 ) {
   const pointers = new Map<number, Position>();
   let start: Position, dragged = false;
@@ -48,7 +49,12 @@ export function bindMapGestures(
     changeView(before.centre, after.centre, before.span && after.span ? after.span / before.span : 1);
   });
   const release = (e: PointerEvent) => { pointers.delete(e.pointerId); };
-  plot.addEventListener('pointerup', release);
+  plot.addEventListener('pointerup', (e) => {
+    const p = point(e);
+    if (pointers.has(e.pointerId) && !dragged && Math.hypot(p.x - start.x, p.y - start.y) < 4 &&
+        e.target === plot) selectPoint(p);
+    release(e);
+  });
   plot.addEventListener('pointercancel', release);
   plot.addEventListener('lostpointercapture', (e) => {
     if (!plot.hasPointerCapture(e.pointerId)) release(e);

@@ -1,6 +1,7 @@
 import type { Position } from '../game/game-types';
 import type { VisiblePlayer } from '../protocol/snapshots';
-import { boundary } from '../game/region';
+import type { Gps } from './gps';
+import { boundary, insideM60 } from '../game/region';
 import { bindMapGestures } from './world-map-gestures';
 import { makeWorldMapStreets, type MapView } from './world-map-streets';
 
@@ -46,13 +47,19 @@ function markers(players: VisiblePlayer[], view: ReturnType<typeof fit>, width: 
   return groups;
 }
 
-export function setupWorldMap(releaseControls: () => void) {
+export function setupWorldMap(releaseControls: () => void, gps: Gps) {
   const dialog = document.querySelector<HTMLDialogElement>('#world-map')!;
   const plot = dialog.querySelector<HTMLElement>('#overview-plot')!;
   const svg = plot.querySelector('svg')!;
   const places = svg.querySelector<SVGUseElement>('#overview-places')!;
   const layer = plot.querySelector<HTMLElement>('#overview-markers')!;
   const streetCanvas = plot.querySelector('canvas')!;
+  const navigation = plot.querySelector<SVGSVGElement>('#overview-navigation')!;
+  const routeLine = navigation.querySelector('polyline')!;
+  const pin = plot.querySelector<HTMLElement>('#overview-pin')!;
+  const clear = dialog.querySelector<HTMLButtonElement>('#overview-clear')!;
+  let lastRoute: typeof gps.route | undefined;
+  let lastIndex = -1, hint = '';
   const streets = makeWorldMapStreets(streetCanvas);
   const zoomIn = plot.querySelector<HTMLButtonElement>('#overview-zoom-in')!;
   const zoomOut = plot.querySelector<HTMLButtonElement>('#overview-zoom-out')!;
@@ -89,7 +96,20 @@ export function setupWorldMap(releaseControls: () => void) {
   }
   zoomIn.onclick = () => zoom(2);
   zoomOut.onclick = () => zoom(0.5);
-  const releasePointers = bindMapGestures(plot, changeView);
+  const releasePointers = bindMapGestures(plot, changeView, (point) => {
+    const x = view.x + point.x / view.scale, y = view.y + point.y / view.scale;
+    if (insideM60(x, y)) {
+      gps.setDestination({ x, y });
+      hint = '';
+    } else hint = 'Choose a destination inside the M60.';
+    draw();
+  });
+  clear.onclick = () => {
+    gps.setDestination();
+    hint = '';
+    draw();
+    (reset.disabled ? zoomIn : reset).focus();
+  };
 
   function describe(p: VisiblePlayer) {
     return p.name + (p.id === localId ? ' (you)' : '') + (p.parkedCarId ? ' · on foot' : ' · driving');
@@ -114,6 +134,18 @@ export function setupWorldMap(releaseControls: () => void) {
     zoomOut.disabled = view.scale <= home.scale;
     streets.draw(view, width, height);
     svg.setAttribute('viewBox', [view.x, view.y, width / view.scale, height / view.scale].join(' '));
+    navigation.setAttribute('viewBox', svg.getAttribute('viewBox')!);
+    if (lastRoute !== gps.route || lastIndex !== gps.index) {
+      lastRoute = gps.route;
+      lastIndex = gps.index;
+      routeLine.setAttribute('points', gps.route.slice(lastIndex).map(p => p.x + ',' + p.y).join(' '));
+    }
+    const destination = gps.destination;
+    clear.hidden = pin.hidden = !destination;
+    if (destination) {
+      pin.style.left = (destination.x - view.x) * view.scale + 'px';
+      pin.style.top = (destination.y - view.y) * view.scale + 'px';
+    }
     places.style.display = streetCanvas.hidden ? '' : 'none';
     places.setAttribute('stroke-width', String(2 / view.scale));
     places.setAttribute('font-size', String(11 / view.scale));
@@ -122,8 +154,9 @@ export function setupWorldMap(releaseControls: () => void) {
     count.textContent = online
       ? players.length + (players.length === 1 ? ' player' : ' players')
       : 'Reconnecting…';
-    const message = selected.length ? selected.map(describe).join(', ')
-      : players.length ? 'Select a marker to locate players.' : '';
+    const gpsStatus = destination && (gps.message || 'Destination set');
+    const message = hint || [selected.map(describe).join(', '), gpsStatus].filter(Boolean).join(' · ')
+      || 'Tap the map to set a GPS destination.';
     if (details.textContent !== message) details.textContent = message;
 
     // Keep the same buttons across snapshots so keyboard focus and pending taps survive.
@@ -152,6 +185,7 @@ export function setupWorldMap(releaseControls: () => void) {
       button.setAttribute('aria-label', button.title);
       button.onclick = () => {
         manual = undefined;
+        hint = '';
         selection = new Set(marker.players.map((p) => p.id));
         draw();
         reset.focus();
@@ -170,6 +204,7 @@ export function setupWorldMap(releaseControls: () => void) {
       return;
     }
     releaseControls();
+    hint = '';
     manual = undefined;
     selection.clear();
     svg.querySelector('#overview-terrain')!.setAttribute('href', '/world-map.svg#terrain');

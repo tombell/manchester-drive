@@ -1,6 +1,7 @@
 import { serveMapChunk, useServerMap } from './map';
 import { mapVersion } from '../game/region';
 import overview from '../game/map/overview.svg' with { type: 'file' };
+import routing from '../game/map/routing.pack' with { type: 'file' };
 import page from '../client/index.html';
 import type { World } from '../game/game-types';
 import { cameraCells } from '../protocol/view';
@@ -65,6 +66,10 @@ export function createGameServer({
           return new Response(stopping ? 'stopping' : 'ok', { status: stopping ? 503 : 200 });
         },
       },
+      '/routing.json': new Response(Bun.file(routing), { headers: {
+        'Content-Type': 'application/json',
+        'Content-Encoding': 'gzip',
+      } }),
       '/world-map.svg': new Response(Bun.file(overview), { headers: { 'Content-Type': 'image/svg+xml' } }),
       '/': page,
       '/index.html': page,

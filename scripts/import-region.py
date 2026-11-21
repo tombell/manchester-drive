@@ -12,6 +12,7 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import nearest_points, polygonize, unary_union
 from shapely.prepared import prep
 
+from map_routing import write_routing
 from map_overview import write_overview
 from map_water import exposed_water, parts
 from map_geometry import CAR_ROADS, PATHS, HEIGHT, WIDTH, SCALE, mapped_path, road, xy
@@ -171,6 +172,7 @@ def build(source):
     boundary = as_points(edge.exterior.coords[:-1])
     (DEST / "region.json").write_bytes(encoded(dict(chunkSize=CHUNK, boundary=boundary,
         version=hashlib.sha256(data).hexdigest()[:16])))
+    write_routing(source, boundary, DEST / "routing.pack")
     write_overview(source, Polygon(boundary), DEST / "overview.svg")
     print(counts, f"{len(index)} chunks, {len(data):,} bytes, {edge.area/(SCALE*1000)**2:.1f} km²")
 
