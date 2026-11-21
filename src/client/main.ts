@@ -10,6 +10,7 @@ import { setupChat } from './chat';
 import { el, notice, outfit, setupGarage, updateHud } from './hud';
 import { leaveOnPageHide, post, subscribeToRoom } from './network';
 import { makeRenderer, viewport } from './renderer';
+import { setupWorldMap } from './world-map';
 
 useBrowserMap();
 const map = el('map');
@@ -44,8 +45,10 @@ let doorBusy = false,
   dismissedRace: string | undefined;
 setupGarage();
 const chat = setupChat(release);
+const worldMap = setupWorldMap(release);
 
 function updateUI() {
+  worldMap.update(frames.at(-1)?.state.players ?? [], session?.id, connected);
   chat.updateSession(session?.token, connected);
   updateHud({
     world: frames.at(-1)?.state,
@@ -219,6 +222,12 @@ for (const type of ['keydown', 'keyup'] as const)
       (event.target.isContentEditable || event.target.matches('input, textarea, select'))
     )
       return;
+    if (event.code === 'KeyM' && type === 'keydown' && !event.repeat) {
+      event.preventDefault();
+      worldMap.toggle();
+      return;
+    }
+    if (worldMap.dialog.open) return;
     if (session && event.code === 'KeyT' && type === 'keydown' && !event.repeat) {
       event.preventDefault();
       el('chat-input').focus({ preventScroll: true });
@@ -226,7 +235,7 @@ for (const type of ['keydown', 'keyup'] as const)
     }
     if (event.target instanceof Element && event.target.closest('#chat-panel')) return;
     if (freeCam) {
-      if (event.code === 'Escape' && type === 'keydown') toggleCamera();
+      if (event.code === 'Escape' && type === 'keydown' && !event.repeat) toggleCamera();
       else if (Object.hasOwn(panDirections, event.code)) {
         event.preventDefault();
         if (type === 'keyup') panKeys.delete(event.code);

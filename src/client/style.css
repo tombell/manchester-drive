@@ -461,7 +461,7 @@ kbd {
 }
 @media (max-width: 620px) {
   #race-panel {
-    top: 78px;
+    top: 100px;
   }
   #dash {
     gap: 6px;
@@ -469,7 +469,7 @@ kbd {
 }
 @media (max-height: 450px) {
   #race-panel {
-    top: 48px;
+    top: 100px;
   }
 }
 
@@ -493,10 +493,14 @@ kbd {
   }
 }
 
-#camera {
+.map-actions {
+  display: flex;
+  gap: 6px;
   position: absolute;
   top: 75px;
   right: clamp(12px, 2.3vw, 32px);
+}
+.map-actions button {
   height: 34px;
   padding: 0 11px;
   color: var(--paper);
@@ -511,7 +515,7 @@ kbd {
   cursor: grabbing;
 }
 @media (max-width: 620px), (max-height: 450px) {
-  #camera {
+  .map-actions {
     top: 58px;
   }
 }
@@ -627,7 +631,7 @@ kbd {
   #race-panel {
     top: 8px;
     left: 50%;
-    right: 140px;
+    right: 210px;
     width: auto;
     max-width: 275px;
     max-height: calc(100% - 148px);
@@ -659,4 +663,95 @@ kbd {
   #chat-log {
     max-height: min(4.5rem, 11dvh);
   }
+}
+
+#world-map {
+  width: min(880px, calc(100% - 20px));
+  height: min(760px, calc(100dvh - 20px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  border: 1px solid #758173;
+  background: var(--ink);
+  color: var(--paper);
+}
+#world-map[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+#world-map::backdrop {
+  background: #131b18b8;
+}
+.overview-heading,
+.overview-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+}
+.overview-heading {
+  border-bottom: 1px solid var(--rule);
+}
+#overview-count,
+#overview-details {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+#overview-close,
+.overview-footer .attribution {
+  margin-left: auto;
+}
+#world-map button:not(.player-marker) {
+  height: 34px;
+  padding: 0 12px;
+}
+.overview-footer {
+  flex-wrap: wrap;
+  border-top: 1px solid var(--rule);
+}
+#overview-details {
+  max-height: 4em;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+#overview-plot {
+  position: relative;
+  overflow: hidden;
+  background: #28332d;
+}
+#overview-plot svg {
+  display: block;
+}
+.player-marker {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid #a8b4a8;
+  background: var(--ink);
+  color: var(--paper);
+  font: bold 0.8rem ui-monospace, monospace;
+}
+.player-marker.local {
+  box-shadow: 0 0 0 2px var(--yellow);
+}
+.player-marker.driver::before,
+.player-marker.walker::before {
+  content: '';
+  width: 15px;
+  height: 15px;
+  background: var(--player-color);
+}
+.player-marker.walker::before {
+  border-radius: 50%;
+  width: 10px;
+  height: 10px;
+}
+.player-marker.driver::before {
+  clip-path: polygon(100% 50%, 0 0, 22% 50%, 0 100%);
+  transform: rotate(var(--heading));
 }

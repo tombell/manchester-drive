@@ -15,6 +15,8 @@ Open [the game](http://127.0.0.1:4173) in two browser windows, choose a name, ve
 
 Select **Free cam** to explore before joining, while driving or on foot. Drag the map with a mouse or finger, or pan with **WASD** or the **arrow keys**. Press **Esc** or use the camera button to return. If you already have a car, it coasts while the camera is detached.
 
+Select **World map** or press **M** to see everyone inside the M60. Arrows show drivers, dots show players on foot and a gold ring marks you. Select a marker to see player names and zoom in, or **Whole region** to zoom back out. **M**, **Esc** or **Close** returns to the game.
+
 Global chat stays visible in the bottom-left corner. Click the message field or press **T** to type, **Enter** to send and **Esc** to return to the game. Joined players can send messages from anywhere on the map, including on foot and in free cam. Spectators can read along. The room keeps its most recent 50 messages in memory until the server restarts.
 
 Brake lights brighten red as drivers slow down. NPCs hold them on while waiting at lights, in queues, or at a crossing. Hold **S** while moving forward to brake, then keep holding it to reverse with white rear lights.
@@ -75,7 +77,7 @@ Street geometry, buildings, paths, trees, tram tracks, parks and water come from
 
 The starting district is bundled with the game. Elsewhere the browser requests 288-metre map squares from the game server as you explore. The server uses the same squares for collisions. The production executable embeds the map and play requires no external map service or API key.
 
-Map data © OpenStreetMap contributors. The derived database consists of the [starting district](src/game/manchester-map.ts) and the [regional archive, index and boundary](src/game/map), distributed under the [Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/). [OpenStreetMap copyright](https://www.openstreetmap.org/copyright)
+Map data © OpenStreetMap contributors. The derived database consists of the [starting district](src/game/manchester-map.ts) and the [regional archive, index, boundary and world map](src/game/map), distributed under the [Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/). [OpenStreetMap copyright](https://www.openstreetmap.org/copyright)
 
 ### Refresh the map
 

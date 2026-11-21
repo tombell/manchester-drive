@@ -1,5 +1,6 @@
 import { serveMapChunk, useServerMap } from './map';
 import { mapVersion } from '../game/region';
+import overview from '../game/map/overview.svg' with { type: 'file' };
 import page from '../client/index.html';
 import type { World } from '../game/game-types';
 import { cameraCells } from '../protocol/view';
@@ -52,6 +53,7 @@ export function createGameServer({
             : new Response(null, { status: 404 });
         },
       },
+      '/world-map.svg': new Response(Bun.file(overview), { headers: { 'Content-Type': 'image/svg+xml' } }),
       '/': page,
       '/index.html': page,
       [snapshotPath]: {

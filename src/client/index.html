@@ -31,7 +31,29 @@
         <div><strong id="street-name">Piccadilly</strong><small>Greater Manchester</small></div>
       </div>
       <div class="north" aria-label="North is up">N<i></i></div>
-      <button id="camera" type="button" aria-controls="map">Free cam</button>
+      <div class="map-actions">
+        <button id="open-world-map" type="button" aria-haspopup="dialog" aria-controls="world-map" aria-keyshortcuts="M">World map</button>
+        <button id="camera" type="button" aria-controls="map">Free cam</button>
+      </div>
+      <dialog id="world-map" aria-labelledby="world-map-title">
+        <div class="overview-heading">
+          <h2 id="world-map-title">World map</h2>
+          <span id="overview-count"></span>
+          <button id="overview-close" type="button" autofocus>Close</button>
+        </div>
+        <div id="overview-plot">
+          <svg width="100%" height="100%" aria-hidden="true">
+            <use id="overview-terrain"></use>
+            <use id="overview-places"></use>
+          </svg>
+          <div id="overview-markers"></div>
+        </div>
+        <div class="overview-footer">
+          <span id="overview-details"></span>
+          <button id="overview-reset" type="button" aria-describedby="overview-details" hidden>Whole region</button>
+          <a class="attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>
+        </div>
+      </dialog>
       <form id="join">
         <div class="form-title">
           <span class="car-icon" aria-hidden="true">▰</span>
