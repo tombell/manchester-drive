@@ -4,7 +4,7 @@ import { gates, raceEntry } from '../game/race';
 import { drawGarage } from './renderer';
 
 export function el(id: 'bee' | 'map' | 'garage-preview'): HTMLCanvasElement;
-export function el(id: 'model' | 'jacket' | 'skin'): HTMLSelectElement;
+export function el(id: 'model' | 'jacket' | 'skin' | 'chat-channel'): HTMLSelectElement;
 export function el(id: 'name' | 'chat-input'): HTMLInputElement;
 export function el(
   id: 'camera' | 'door' | 'start' | 'race-action' | 'chat-send',

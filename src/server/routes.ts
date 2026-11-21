@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { z } from 'zod';
-import type { ChatMessage } from '../protocol/chat';
+import type { LiveChatEvent } from '../protocol/chat';
+import type { Player } from '../game/game-types';
 import {
   chatCommand,
   inputCommand,
@@ -16,7 +17,7 @@ const commandBody = z.record(z.string(), z.unknown());
 
 export function createRoutes(
   room: GameRoom,
-  publishChat: (message: ChatMessage) => void,
+  publishChat: (event: LiveChatEvent, sender: Player) => void,
   updateView: (view: z.output<typeof viewCommand>) => boolean,
 ) {
   const api = new Hono<{ Variables: Variables }>();
@@ -73,7 +74,14 @@ export function createRoutes(
     const result = chatCommand.safeParse(c.var.body);
     if (!result.success)
       return c.json({ error: 'Enter a message within the character limit.' }, 400);
-    publishChat(room.chat(c.var.session, result.data.text));
+    const { text, channel } = result.data;
+    const { player } = c.var.session;
+    publishChat(
+      channel === 'local'
+        ? { type: 'local', playerId: player.id, text }
+        : { type: 'message', message: room.chat(c.var.session, text) },
+      player,
+    );
     return c.json({}, 201);
   });
   api.post('/race', (c) => {

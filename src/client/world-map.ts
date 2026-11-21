@@ -1,4 +1,5 @@
-import type { Player, Position } from '../game/game-types';
+import type { Position } from '../game/game-types';
+import type { VisiblePlayer } from '../protocol/snapshots';
 import { boundary } from '../game/region';
 import { bindMapGestures } from './world-map-gestures';
 import { makeWorldMapStreets, type MapView } from './world-map-streets';
@@ -29,10 +30,10 @@ function fit(area: typeof region, width: number, height: number) {
 }
 
 interface Marker extends Position {
-  players: Player[];
+  players: VisiblePlayer[];
 }
 
-function markers(players: Player[], view: ReturnType<typeof fit>, width: number, height: number) {
+function markers(players: VisiblePlayer[], view: ReturnType<typeof fit>, width: number, height: number) {
   const groups: Marker[] = [];
   for (const player of players) {
     const x = (player.x - view.x) * view.scale;
@@ -58,7 +59,7 @@ export function setupWorldMap(releaseControls: () => void) {
   const reset = dialog.querySelector<HTMLButtonElement>('#overview-reset')!;
   const details = dialog.querySelector<HTMLElement>('#overview-details')!;
   const count = dialog.querySelector<HTMLElement>('#overview-count')!;
-  let players: Player[] = [], localId: string | undefined, online = false;
+  let players: VisiblePlayer[] = [], localId: string | undefined, online = false;
   let selection = new Set<string>();
   const buttons = new Map<string, HTMLButtonElement>();
   const maxScale = 4;
@@ -90,8 +91,8 @@ export function setupWorldMap(releaseControls: () => void) {
   zoomOut.onclick = () => zoom(0.5);
   const releasePointers = bindMapGestures(plot, changeView);
 
-  function describe(p: Player) {
-    return p.name + (p.id === localId ? ' (you)' : '') + (p.parkedCar ? ' · on foot' : ' · driving');
+  function describe(p: VisiblePlayer) {
+    return p.name + (p.id === localId ? ' (you)' : '') + (p.parkedCarId ? ' · on foot' : ' · driving');
   }
 
   function draw() {
@@ -139,7 +140,7 @@ export function setupWorldMap(releaseControls: () => void) {
       }
       visible.add(first.id);
       const local = marker.players.some((p) => p.id === localId);
-      button.className = 'player-marker ' + (many ? 'group' : first.parkedCar ? 'walker' : 'driver') +
+      button.className = 'player-marker ' + (many ? 'group' : first.parkedCarId ? 'walker' : 'driver') +
         (local ? ' local' : '');
       button.style.left = marker.x + 'px';
       button.style.top = marker.y + 'px';
@@ -193,7 +194,7 @@ export function setupWorldMap(releaseControls: () => void) {
   return {
     dialog,
     toggle,
-    update(next: Player[], me: string | undefined, connected: boolean) {
+    update(next: VisiblePlayer[], me: string | undefined, connected: boolean) {
       players = next;
       localId = me;
       online = connected;

@@ -691,5 +691,6 @@ export function makeRenderer(canvas: HTMLCanvasElement) {
     }
     g.imageSmoothingEnabled = false;
     g.drawImage(buffer, 0, 0, canvas.width, canvas.height);
+    return { x, y, width: vw, height: vh };
   };
 }

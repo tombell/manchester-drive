@@ -278,3 +278,63 @@ test('global chat authenticates the sender, reaches both clients and restores hi
   const reconnect = await readEvents(server.url, abort.signal, 'chat');
   expect(await reconnect()).toEqual({ type: 'history', messages: [a.message] });
 });
+
+test('local speech reaches nearby players on their live streams and stays out of history', async () => {
+  const server = createGameServer({ hostname: '127.0.0.1', port: 0 });
+  const abort = new AbortController();
+  onTestFinished(async () => {
+    abort.abort();
+    await server.stop();
+  });
+  const post = (path: string, body: object) =>
+    fetch(new URL(path, server.url), { method: 'POST', body: JSON.stringify(body) });
+  const drivers: Credentials[] = [];
+  for (let i = 0; i < 6; i++) {
+    drivers.push(await (await post('/join', { name: 'Driver ' + i })).json());
+  }
+  const snapshot = await readEvents(server.url, abort.signal, 'message');
+  const { players } = await snapshot();
+  const sender = drivers[0];
+  const speaker = players.find((p) => p.id === sender.id)!;
+  const distance = (driver: Credentials) => {
+    const p = players.find((p) => p.id === driver.id)!;
+    return Math.hypot(p.x - speaker.x, p.y - speaker.y);
+  };
+  const nearby = drivers.find((d) => d !== sender && distance(d) < 230)!;
+  const distant = drivers.find((d) => distance(d) > 270)!;
+  expect((await post('/vehicle', { token: sender.token, action: 'exit', seq: 1 })).status).toBe(200);
+
+  async function connect(token?: string) {
+    let viewer = '';
+    const read = await readEvents(server.url, abort.signal, 'chat', (id) => {
+      viewer = id;
+    });
+    expect(await read()).toEqual({ type: 'history', messages: [] });
+    // Every camera watches the speaker, including the distant driver's free cam.
+    const area = cameraCells(speaker, 800, 500);
+    expect((await post('/view', { viewer, area, token })).status).toBe(200);
+    return read;
+  }
+  const [own, close, far, spectator] = await Promise.all([
+    connect(sender.token),
+    connect(nearby.token),
+    connect(distant.token),
+    connect(),
+  ]);
+  const text = 'Meet at my car';
+  expect((await post('/chat', { channel: 'local', text })).status).toBe(401);
+  expect((await post('/chat', { channel: 'locl', text, token: sender.token })).status).toBe(400);
+  expect((await post('/chat', { channel: 'local', text, token: sender.token })).status).toBe(201);
+  const speech: ChatEvent = { type: 'local', playerId: sender.id, text };
+  expect(await own()).toEqual(speech);
+  expect(await close()).toEqual(speech);
+
+  // A subsequent global message marks the end of the delivery window for every reader.
+  await post('/chat', { token: sender.token, text: 'Hello everyone' });
+  const global = await own();
+  if (global.type !== 'message') throw new Error('Expected global chat');
+  expect(await far()).toEqual(global);
+  expect(await spectator()).toEqual(global);
+  const reconnect = await readEvents(server.url, abort.signal, 'chat');
+  expect(await reconnect()).toEqual({ type: 'history', messages: [global.message] });
+});

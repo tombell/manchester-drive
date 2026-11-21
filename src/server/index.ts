@@ -4,6 +4,7 @@ import overview from '../game/map/overview.svg' with { type: 'file' };
 import page from '../client/index.html';
 import type { World } from '../game/game-types';
 import { cameraCells } from '../protocol/view';
+import { withinEarshot } from '../protocol/chat';
 import { JUNCTION } from '../game/streets';
 import type { CellBounds } from '../game/spatial';
 import { neighbourhoodFrames } from './neighbourhoods';
@@ -25,13 +26,16 @@ export function createGameServer({
   }
   const viewers = new Map<string, Viewer>();
   const defaultArea = cameraCells(JUNCTION, 800, 500);
-  function broadcast(frameFor: (viewer: Viewer) => Uint8Array) {
+  function broadcast(frameFor: (viewer: Viewer) => Uint8Array | undefined) {
     for (const [id, viewer] of viewers) {
       const { stream } = viewer;
       if ((stream.desiredSize ?? 0) <= 0) {
         viewers.delete(id);
         stream.error(new Error('Client fell behind.'));
-      } else stream.enqueue(frameFor(viewer));
+      } else {
+        const frame = frameFor(viewer);
+        if (frame) stream.enqueue(frame);
+      }
     }
   }
 
@@ -86,9 +90,13 @@ export function createGameServer({
     },
     fetch: createRoutes(
       room,
-      (message) => {
-        const frame = encodeChat({ type: 'message', message });
-        broadcast(() => frame);
+      (event, sender) => {
+        const frame = encodeChat(event);
+        broadcast(({ token }) => {
+          if (event.type === 'message') return frame;
+          const listener = token && room.sessionFor(token)?.player;
+          if (listener && withinEarshot(sender, listener)) return frame;
+        });
       },
       ({ viewer, area, token }) => {
         const client = viewers.get(viewer);

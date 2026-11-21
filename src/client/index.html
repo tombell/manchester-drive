@@ -26,6 +26,7 @@
         tabindex="-1"
         aria-label="Top-down driving game inside Manchester’s M60 ring road"
       ></canvas>
+      <div id="speech-bubbles" role="log" aria-label="Nearby speech"></div>
       <div class="location">
         <span class="pin" aria-hidden="true"></span>
         <div><strong id="street-name">Piccadilly</strong><small>Greater Manchester</small></div>
@@ -109,7 +110,13 @@
       </div>
     </main>
     <section id="chat-panel" aria-labelledby="chat-title">
-      <h2 id="chat-title">Global chat</h2>
+      <div class="chat-heading">
+        <h2 id="chat-title">Global chat</h2>
+        <select id="chat-channel" aria-label="Chat channel" hidden>
+          <option value="global">Global</option>
+          <option value="local">Local</option>
+        </select>
+      </div>
       <div id="chat-log" role="log" aria-label="Chat messages" tabindex="0"></div>
       <p id="chat-empty">No messages yet.</p>
       <p id="chat-status" role="status">Join the game to send a message.</p>

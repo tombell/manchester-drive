@@ -389,7 +389,8 @@ function draw(now: number) {
   const street = streetAt(focus.x, focus.y);
   const streetLabel = el('street-name');
   if (streetLabel.textContent !== street) streetLabel.textContent = street;
-  render(world, freeCam ? undefined : session?.id, focus);
+  const view = render(world, freeCam ? undefined : session?.id, focus);
+  if (view) chat.drawBubbles(world.players, predicted, now, view);
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);

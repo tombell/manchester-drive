@@ -17,7 +17,9 @@ Select **Free cam** to explore before joining, while driving or on foot. Drag th
 
 Select **World map** or press **M** to see everyone inside the M60. Arrows show drivers, dots show players on foot and a gold ring marks you. Select a marker to follow players, or explore with the **+** and **−** buttons, mouse wheel or pinch gesture. Drag to pan. Individual streets and their names appear as you zoom into a neighbourhood. **Whole region** restores the overview. **M**, **Esc** or **Close** returns to the game.
 
-Global chat stays visible in the bottom-left corner. Click the message field or press **T** to type, **Enter** to send and **Esc** to return to the game. Joined players can send messages from anywhere on the map, including on foot and in free cam. Spectators can read along. The room keeps its most recent 50 messages in memory until the server restarts.
+Click the chat field or press **T** to type, **Enter** to send and **Esc** to return to the game. **Global** messages reach everyone, including spectators. The room keeps the most recent 50 global messages until the server restarts.
+
+Choose **Local** to speak to players within 50 metres. Your message appears above your car or character for six seconds. Your newest message replaces your previous bubble. In free cam, hearing range still follows your player.
 
 Brake lights brighten red as drivers slow down. NPCs hold them on while waiting at lights, in queues, or at a crossing. Hold **S** while moving forward to brake, then keep holding it to reverse with white rear lights.
 
